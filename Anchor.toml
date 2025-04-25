@@ -1,6 +1,6 @@
 [toolchain]
 package_manager = "yarn"
-anchor_version = "0.31.0"
+anchor_version = "0.31.1"
 
 [features]
 resolution = true
@@ -13,7 +13,7 @@ nft_marketplace = "7oEFwgSPqj1XWYQJ9yEC8PAgP45Ye8pK8uW5e8NqiAdt"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "https://api.devnet.solana.com"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

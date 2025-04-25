@@ -12,7 +12,7 @@ import {
   getAssociatedTokenAddress,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID } from "@metaplex-foundation/mpl-token-metadata";
+const TOKEN_METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 import { assert } from "chai";
 
 describe("nft_marketplace", () => {
@@ -65,7 +65,7 @@ describe("nft_marketplace", () => {
       .accounts({
         signer: payer,
         mint: mint.publicKey,
-        associatedTokenAccount: ata,
+        associated_token_account: ata,
         metadataAccount: metadataPda,
         masterEditionAccount: masterEditionPda,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -73,7 +73,7 @@ describe("nft_marketplace", () => {
         tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
         rent: SYSVAR_RENT_PUBKEY,
-      })
+      } as any)
       .signers([mint])
       .rpc();
 
@@ -96,8 +96,9 @@ describe("nft_marketplace", () => {
       })
       .rpc();
 
-    // After burning, token account should either be closed or balance zero
-    const postBalance = await provider.connection.getTokenAccountBalance(ata);
-    assert.equal(postBalance.value.uiAmount, 0);
+    // Check if ATA is closed after burn
+    const postAccount = await provider.connection.getAccountInfo(ata);
+    assert.isNull(postAccount, "ATA should be closed after burn");
   });
+
 });

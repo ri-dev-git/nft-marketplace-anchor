@@ -114,34 +114,39 @@ pub mod nft_marketplace {
 
 #[derive(Accounts)]
 pub struct MintNFT<'info> {
+    /// CHECK: signer is a trusted signer, verified by constraint `signer`
     #[account(mut, signer)]
     pub signer: AccountInfo<'info>,
+
     #[account(
-            init,
-            payer = signer,
-            mint::decimals = 0,
-            mint::authority = signer.key(),
-            mint::freeze_authority = signer.key(),
-        )]
+        init,
+        payer = signer,
+        mint::decimals = 0,
+        mint::authority = signer.key(),
+        mint::freeze_authority = signer.key(),
+    )]
     pub mint: Account<'info, Mint>,
+
     #[account(
-            init_if_needed,
-            payer = signer,
-            associated_token::mint = mint,
-            associated_token::authority = signer
-        )]
+        init_if_needed,
+        payer = signer,
+        associated_token::mint = mint,
+        associated_token::authority = signer
+    )]
     pub associated_token_account: Account<'info, TokenAccount>,
-    /// CHECK - address
+
+    /// CHECK: PDA for metadata account verified via `address = ...`
     #[account(
-            mut,
-            address = MetadataAccount::find_pda(&mint.key()).0,
-        )]
+        mut,
+        address = MetadataAccount::find_pda(&mint.key()).0,
+    )]
     pub metadata_account: AccountInfo<'info>,
-    /// CHECK - address
+
+    /// CHECK: PDA for master edition verified via `address = ...`
     #[account(
-            mut,
-            address = MasterEdition::find_pda(&mint.key()).0,
-        )]
+        mut,
+        address = MasterEdition::find_pda(&mint.key()).0,
+    )]
     pub master_edition_account: AccountInfo<'info>,
 
     pub token_program: Program<'info, Token>,
@@ -150,20 +155,31 @@ pub struct MintNFT<'info> {
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 }
-
 #[derive(Accounts)]
 pub struct BurnNFT<'info> {
     #[account(mut)]
-    owner: Signer<'info>,
+    pub owner: Signer<'info>,
     #[account(mut)]
-    mint: Account<'info, Mint>,
+    pub mint: Account<'info, Mint>,
+
+    /// CHECK: Verified via PDA and CPI constraints in burn logic
     #[account(mut)]
-    metadata: AccountInfo<'info>,
+    pub metadata: AccountInfo<'info>,
+
+    /// CHECK: Token account is checked in program logic
     #[account(mut)]
-    token: AccountInfo<'info>,
+    pub token: AccountInfo<'info>,
+
+    /// CHECK: Master edition is verified by PDA address
     #[account(mut)]
-    edition: AccountInfo<'info>,
-    collection_metadata: Option<AccountInfo<'info>>,
-    spl_token: AccountInfo<'info>,
-    metadata_program_id: AccountInfo<'info>,
+    pub edition: AccountInfo<'info>,
+
+    /// CHECK: Optional, verified by collection or PDA constraint if provided
+    pub collection_metadata: Option<AccountInfo<'info>>,
+
+    /// CHECK: Standard SPL Token program
+    pub spl_token: AccountInfo<'info>,
+
+    /// CHECK: Verified by CPI call to token metadata program
+    pub metadata_program_id: AccountInfo<'info>,
 }
