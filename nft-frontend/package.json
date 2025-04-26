@@ -1,0 +1,43 @@
+{
+  "name": "nft-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.31.1",
+    "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
+    "@metaplex-foundation/umi": "^1.2.0",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.2.0",
+    "@metaplex-foundation/umi-uploader-irys": "^1.2.0",
+    "@reown/appkit": "^1.7.3",
+    "@reown/appkit-adapter-solana": "^1.7.3",
+    "@reown/walletkit": "^1.2.3",
+    "@solana/spl-token": "^0.4.13",
+    "@solana/wallet-adapter-wallets": "^0.19.36",
+    "@solana/web3.js": "^1.98.2",
+    "@walletconnect/core": "^2.20.0",
+    "@walletconnect/utils": "^2.20.0",
+    "install": "^0.13.0",
+    "motion": "^12.9.1",
+    "next": "15.3.1",
+    "npm": "^11.3.0",
+    "pinata": "^2.2.1",
+    "postcss": "^8.5.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-hot-toast": "^2.5.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4.1.4",
+    "typescript": "^5"
+  }
+}
