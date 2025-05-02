@@ -3,7 +3,7 @@
 export const ConnectButton = () => {
 
     return (
-        <div >
+        <div className='flex w-full  content-center justify-center'>
             <appkit-button />
         </div>
     )

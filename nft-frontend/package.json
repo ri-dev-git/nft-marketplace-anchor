@@ -13,6 +13,7 @@
     "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
     "@metaplex-foundation/umi": "^1.2.0",
     "@metaplex-foundation/umi-bundle-defaults": "^1.2.0",
+    "@metaplex-foundation/umi-signer-wallet-adapters": "^1.2.0",
     "@metaplex-foundation/umi-uploader-irys": "^1.2.0",
     "@reown/appkit": "^1.7.3",
     "@reown/appkit-adapter-solana": "^1.7.3",
@@ -37,6 +38,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "daisyui": "^5.0.28",
     "tailwindcss": "^4.1.4",
     "typescript": "^5"
   }
