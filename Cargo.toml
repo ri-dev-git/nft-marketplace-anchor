@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "programs/*"
-]
+, "rocket-mongo-example"]
 resolver = "2"
 
 [profile.release]
