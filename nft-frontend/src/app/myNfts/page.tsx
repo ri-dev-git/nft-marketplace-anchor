@@ -27,6 +27,7 @@ export default function MarketplacePage() {
     const { walletProvider } = useAppKitProvider<Provider>('solana');
     const walletPublicKey = walletProvider?.publicKey;
     const [myNFTs, setMyNFTs] = useState<DigitalAsset[]>([]);
+    const [nftData, setNftData] = useState<[]>()
     const [loading, setLoading] = useState(true);
     const [transferring, setTransferring] = useState(false);
     const [burning, setBurning] = useState(false);
@@ -44,35 +45,30 @@ export default function MarketplacePage() {
             .use(mplTokenMetadata())
             .use(mplToolbox())
     );
+    const fetchNFTs = async (call: String) => {
+        if (!walletPublicKey) return;
+        // setLoading(true);
+        try {
 
-    // Update Umi with wallet when provider changes
+            const assets = await fetchAllDigitalAssetByOwner(umiInstance, publicKey(walletPublicKey.toString()));
+            setMyNFTs(assets);
+        } catch (error) {
+            console.error("Failed to fetch NFTs:", error);
+            setMyNFTs([]);
+        }
+    };
+
+
     useEffect(() => {
         if (walletProvider) {
             const updatedUmi = umiInstance.use(walletAdapterIdentity(walletProvider as any));
             setUmiInstance(updatedUmi);
         }
-    }, [walletProvider]);
 
-    useEffect(() => {
-        const fetchNFTs = async () => {
-            if (!walletPublicKey) return;
-            setLoading(true);
-            try {
-                const assets = await fetchAllDigitalAssetByOwner(umiInstance, publicKey(walletPublicKey.toString()));
-                setMyNFTs(assets);
-            } catch (error) {
-                console.error("Failed to fetch NFTs:", error);
-                setMyNFTs([]);
-            } finally {
-                setLoading(false);
-            }
-        };
 
-        fetchNFTs();
-    }, [walletPublicKey?.toString(), umiInstance]);
+        fetchNFTs("");
 
-    // Clear transaction status after 5 seconds
-    useEffect(() => {
+        setLoading(false)
         if (transactionStatus) {
             const timer = setTimeout(() => {
                 setTransactionStatus(null);
@@ -80,7 +76,9 @@ export default function MarketplacePage() {
 
             return () => clearTimeout(timer);
         }
-    }, [transactionStatus]);
+
+    }, [walletPublicKey?.toString(), umiInstance, transactionStatus, myNFTs, walletProvider]);
+
     async function handleTransfer(umi: Umi, nft: DigitalAsset, recipient: string) {
         if (!recipient || !nft) {
             setTransactionStatus({
@@ -188,6 +186,7 @@ export default function MarketplacePage() {
     async function handleBurn(umi: Umi, nft: DigitalAsset) {
         if (!nft) return;
 
+
         // Make sure wallet is connected
         if (!walletProvider || !walletPublicKey) {
             setTransactionStatus({
@@ -196,6 +195,7 @@ export default function MarketplacePage() {
             });
             return;
         }
+        setLoading(true);
 
         setBurning(true);
 
@@ -210,15 +210,18 @@ export default function MarketplacePage() {
             });
 
             const { signature } = await builder.sendAndConfirm(umiInstance);
+
             console.log("Burn successful:", signature);
 
-            // Update local state - remove the burned NFT
-            setMyNFTs(prev => prev.filter(item => item.mint.publicKey.toString() !== nft.mint.publicKey.toString()));
+            setTimeout(() => { fetchNFTs("burn"); console.log("yo") }, 4000);
+
+            setLoading(false);
 
             setTransactionStatus({
                 type: 'success',
                 message: 'NFT burned successfully!'
             });
+
         } catch (error) {
             console.error("Burn failed:", error);
             setTransactionStatus({

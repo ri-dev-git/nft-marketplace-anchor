@@ -14,8 +14,8 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" >
+      <body suppressHydrationWarning={true}>
         <ContextProvider>{children}</ContextProvider>
       </body>
     </html>
