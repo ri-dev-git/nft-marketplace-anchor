@@ -36,8 +36,9 @@ export default function SellPage() {
     const [isClient, setIsClient] = useState(false);
     const { walletProvider } = useAppKitProvider<Provider>("solana");
     const connection: Connection = useAppKitConnection().connection as Connection;
-    const { isConnected } = useAppKitAccount();
+    const { isConnected, address } = useAppKitAccount();
     const publicKey = walletProvider?.publicKey;
+
 
     const [file, setFile] = useState<File | null>(null);
     const [filePreview, setFilePreview] = useState<string | null>(null);
@@ -52,7 +53,7 @@ export default function SellPage() {
     // Ensure this only runs on the client
     useEffect(() => {
         setIsClient(true);
-    }, []);
+    }, [address]);
 
     // File validation and preview
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,13 +97,12 @@ export default function SellPage() {
         signature: string
     ): Promise<boolean> => {
         try {
-            const latestBlockhash = await connection.getLatestBlockhash();
+            const latestBlockhash = await connection.getLatestBlockhash("confirmed");
             const confirmationStrategy = {
-                blockhash: latestBlockhash.blockhash,
-                lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
                 signature,
+                ...latestBlockhash,
             };
-            await connection.confirmTransaction(confirmationStrategy, "processed");
+            await connection.confirmTransaction(confirmationStrategy, "confirmed");
             return true;
         } catch (err) {
             console.error("Transaction confirmation failed:", err);
@@ -141,7 +141,7 @@ export default function SellPage() {
         }
     };
 
-    // Mint NFT with improved error handling and transaction confirmation
+    // Mint NFT with improved confirmation handling
     const onMint = async () => {
 
         if (!publicKey || !file) {

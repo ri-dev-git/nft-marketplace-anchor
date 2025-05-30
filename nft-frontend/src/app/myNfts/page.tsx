@@ -7,7 +7,7 @@ import { fetchAllDigitalAssetByOwner, TokenStandard } from "@metaplex-foundation
 import { publicKey, Umi } from "@metaplex-foundation/umi";
 import { NFTCard } from "@/src/components/NFTCard";
 import { DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
-import { Connection, useAppKitConnection, type Provider } from '@reown/appkit-adapter-solana/react';
+import { Connection, useAppKitConnection, WalletAdapter, type Provider } from '@reown/appkit-adapter-solana/react';
 import { burnV1, transferV1 } from '@metaplex-foundation/mpl-token-metadata';
 import { findMetadataPda } from '@metaplex-foundation/mpl-token-metadata';
 import { walletAdapterIdentity } from '@metaplex-foundation/umi-signer-wallet-adapters';
@@ -38,16 +38,16 @@ export default function MarketplacePage() {
         type: 'success' | 'error';
         message: string;
     } | null>(null);
-
+    const { isConnected, address } = useAppKitAccount();
     // Create a reference to hold the Umi instance with signer
-    const [umiInstance, setUmiInstance] = useState(() =>
-        createUmi('https://api.devnet.solana.com')
+    const [umiInstance, setUmiInstance] = useState<Umi>(() =>
+        createUmi('https://api.devnet.solana.com ')
             .use(mplTokenMetadata())
             .use(mplToolbox())
     );
-    const fetchNFTs = async (call: String) => {
+    const fetchNFTs = async () => {
         if (!walletPublicKey) return;
-        // setLoading(true);
+        setLoading(true);
         try {
 
             const assets = await fetchAllDigitalAssetByOwner(umiInstance, publicKey(walletPublicKey.toString()));
@@ -61,12 +61,12 @@ export default function MarketplacePage() {
 
     useEffect(() => {
         if (walletProvider) {
-            const updatedUmi = umiInstance.use(walletAdapterIdentity(walletProvider as any));
+            const updatedUmi = umiInstance.use(walletAdapterIdentity(walletProvider as unknown as WalletAdapter));
             setUmiInstance(updatedUmi);
         }
 
 
-        fetchNFTs("");
+        fetchNFTs();
 
         setLoading(false)
         if (transactionStatus) {
@@ -77,7 +77,7 @@ export default function MarketplacePage() {
             return () => clearTimeout(timer);
         }
 
-    }, [walletPublicKey?.toString(), umiInstance, transactionStatus, myNFTs, walletProvider]);
+    }, [walletPublicKey?.toString(), myNFTs.length, address]);
 
     async function handleTransfer(umi: Umi, nft: DigitalAsset, recipient: string) {
         if (!recipient || !nft) {
@@ -213,15 +213,14 @@ export default function MarketplacePage() {
 
             console.log("Burn successful:", signature);
 
-            setTimeout(() => { fetchNFTs("burn"); console.log("yo") }, 4000);
-
-            setLoading(false);
+            // setTimeout(() => { fetchNFTs("burn"); console.log("yo") }, 4000);
 
             setTransactionStatus({
                 type: 'success',
                 message: 'NFT burned successfully!'
             });
 
+            setLoading(false);
         } catch (error) {
             console.error("Burn failed:", error);
             setTransactionStatus({

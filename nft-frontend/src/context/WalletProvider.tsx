@@ -16,8 +16,8 @@ const metadata = {
 export const modal = createAppKit({
     adapters: [solanaWeb3JsAdapter],
     projectId,
-    networks,
-    metadata,
+    networks: networks,
+    metadata: metadata,
     themeMode: 'dark',
     features: {
         analytics: true // Optional - defaults to your Cloud configuration
