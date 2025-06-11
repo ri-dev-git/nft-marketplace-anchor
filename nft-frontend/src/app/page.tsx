@@ -46,33 +46,12 @@ export default function Home() {
   // Initialize Umi with your preferred RPC endpoint
   const umi = createUmi('https://api.devnet.solana.com');
 
-  // Device detection
-  useEffect(() => {
-    const checkDevice = () => {
-      setIsMobile(window.innerWidth < 768);
-      setTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
-    };
 
-    checkDevice();
-    window.addEventListener('resize', checkDevice);
 
-    return () => window.removeEventListener('resize', checkDevice);
-  }, []);
 
   async function getNFTsFromMarketplaceAPI() {
     try {
-      // Use relative URL for better cross-environment compatibility
-      const apiUrl = process.env.NODE_ENV === 'production'
-        ? '/api/get_listed_nfts'
-        : 'http://127.0.0.1:8080/get_listed_nfts';
-
-      const res = await fetch(apiUrl, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-
+      const res = await fetch('http://127.0.0.1:8080/get_listed_nfts');
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
       console.log("MongoDB Listed NFTs:", data);
@@ -83,7 +62,17 @@ export default function Home() {
     }
   }
 
+
   useEffect(() => {
+    // const checkDevice = () => {
+    //   setIsMobile(window.innerWidth < 768);
+    //   setTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    // };
+
+    // checkDevice();
+    // // window.addEventListener('resize', checkDevice);
+
+    // return () => window.removeEventListener('resize', checkDevice);
     async function fetchNFTs() {
       setIsLoading(true);
       setLoadingFromServer(true);
@@ -284,7 +273,7 @@ export default function Home() {
           )}
         </div>
       ) : (
-        <div className="flex flex-col h-full items-center justify-center p-4 sm:p-10 text-center">
+        <div className="flex flex-col h-full w-full items-center justify-center p-4 sm:p-10 text-center">
           <div className="max-w-md mx-auto">
             <div className="text-4xl sm:text-6xl mb-4 sm:mb-6">🔗</div>
             <h1 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">

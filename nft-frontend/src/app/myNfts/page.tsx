@@ -55,6 +55,8 @@ export default function MarketplacePage() {
         } catch (error) {
             console.error("Failed to fetch NFTs:", error);
             setMyNFTs([]);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -64,11 +66,10 @@ export default function MarketplacePage() {
             const updatedUmi = umiInstance.use(walletAdapterIdentity(walletProvider as unknown as WalletAdapter));
             setUmiInstance(updatedUmi);
         }
-
+        // setLoading(true)
 
         fetchNFTs();
 
-        setLoading(false)
         if (transactionStatus) {
             const timer = setTimeout(() => {
                 setTransactionStatus(null);

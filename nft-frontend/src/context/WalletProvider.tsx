@@ -1,5 +1,5 @@
 'use client'
-
+import { solana, solanaTestnet, solanaDevnet } from '@reown/appkit/networks'
 import { solanaWeb3JsAdapter, projectId, networks } from '../config'
 import { createAppKit } from '@reown/appkit/react'
 import React, { type ReactNode } from 'react'
@@ -17,7 +17,13 @@ export const modal = createAppKit({
     adapters: [solanaWeb3JsAdapter],
     projectId,
     networks: networks,
-    metadata: metadata,
+    metadata: {
+        name: 'NFT Marketplace',
+        description: 'NFT Marketplace on Solana',
+        url: 'https://your-marketplace.com', // Update with your URL
+        icons: ['https://your-marketplace.com/icon.png'] // Update with your icon
+    },
+
     themeMode: 'dark',
     features: {
         analytics: true // Optional - defaults to your Cloud configuration
