@@ -3,6 +3,7 @@ use rocket::get;
 use rocket::put;
 use rocket::post;
 use rocket::serde::json::Json;
+use rocket::delete;
 use rocket::http::Status;
 use rocket::response::status;
 
@@ -80,7 +81,7 @@ pub async fn get_listed_nfts(
     }
 }
 
-#[post("/list_nft", format = "json", data = "<nft_data>")]
+#[post("/list_nft", format = "application/json", data = "<nft_data>")]
 pub async fn list_nft(
     nft_data: Json<NFTMetadata>,
     mut db: Connection<MainDatabase>
@@ -148,6 +149,7 @@ pub async fn list_nft(
 pub struct UpdateListingStatus {
     pub mint_address: String,
     pub is_listed: bool,
+    pub new_owner: Option<String>,
 }
 
 #[put("/update_nft_listing_status", format = "json", data = "<payload>")]
@@ -157,46 +159,69 @@ pub async fn update_nft_listing_status(
 ) -> Result<Json<serde_json::Value>, status::Custom<Json<serde_json::Value>>> {
     let collection = db.database("nft_marketplace").collection::<MintedNFTs>("MintedNFTs");
 
+    let mut update_doc = doc! { "is_listed": payload.is_listed };
+
+    if let Some(owner) = &payload.new_owner {
+        update_doc.insert("owner_address", owner); // <-- Update owner
+    }
+
     let filter = doc! { "mint_address": &payload.mint_address };
-    let update = doc! { "$set": { "is_listed": payload.is_listed } };
+    let update = doc! { "$set": update_doc };
 
     match collection.update_one(filter, update, None).await {
         Ok(result) => {
             if result.modified_count == 0 {
-                return Err(
-                    status::Custom(
-                        Status::NotFound,
-                        Json(
-                            serde_json::json!({
+                return Err(status::Custom(Status::NotFound, Json(serde_json::json!({
                     "status": "error",
                     "message": "No NFT found or no change made"
-                })
-                        )
-                    )
-                );
+                }))));
             }
-            Ok(
-                Json(
-                    serde_json::json!({
+            Ok(Json(serde_json::json!({
                 "status": "success",
-                "message": "NFT listing status updated"
-            })
-                )
-            )
+                "message": "NFT listing status and owner updated"
+            })))
         }
         Err(e) => {
             println!("Error updating listing status: {}", e);
-            Err(
-                status::Custom(
-                    Status::InternalServerError,
-                    Json(
-                        serde_json::json!({
+            Err(status::Custom(Status::InternalServerError, Json(serde_json::json!({
                 "status": "error",
                 "message": format!("Failed to update listing status: {}", e)
-            })
-                    )
-                )
-            )
+            }))))
+        }
+    }
+}
+
+#[delete("/delete_nft/<mint_address>")]
+pub async fn delete_nft(
+    mint_address: String,
+    mut db: Connection<MainDatabase>,
+) -> Result<status::NoContent, status::Custom<Json<serde_json::Value>>> {
+    let collection = db.database("nft_marketplace").collection::<MintedNFTs>("MintedNFTs");
+
+    let filter = doc! { "mint_address": &mint_address };
+
+    match collection.delete_one(filter, None).await {
+        Ok(result) => {
+            if result.deleted_count == 0 {
+                return Err(status::Custom(
+                    Status::NotFound,
+                    Json(serde_json::json!({
+                        "status": "error",
+                        "message": "NFT not found"
+                    })),
+                ));
+            }
+            Ok(status::NoContent)
+        }
+        Err(e) => {
+            println!("Error deleting NFT: {}", e);
+            Err(status::Custom(
+                Status::InternalServerError,
+                Json(serde_json::json!({
+                    "status": "error",
+                    "message": format!("Failed to delete NFT: {}", e)
+                })),
+            ))
         }
     }
 }

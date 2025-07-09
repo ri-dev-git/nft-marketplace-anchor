@@ -1,11 +1,12 @@
 [package]
 name = "rocket-mongo-example"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
 rocket = {version = "0.5.1", features = ["json"]}
 mongodb= "3.2.3"
+rocket_cors = "0.6.0"
 serde="1.0.219"
 dotenv="0.15.0"
 rocket_db_pools = { version = "0.2.0", features = ["mongodb"] }
