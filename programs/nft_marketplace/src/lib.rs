@@ -1,23 +1,23 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::{program::invoke, system_instruction};
 use anchor_spl::{
     associated_token::AssociatedToken,
     metadata::{
         create_master_edition_v3, create_metadata_accounts_v3, CreateMasterEditionV3,
         CreateMetadataAccountsV3, Metadata,
     },
-    token::{mint_to, Mint, MintTo, Token, TokenAccount},
+    token::{mint_to, Mint, MintTo, Token, TokenAccount, transfer_checked, TransferChecked},
 };
-
 use mpl_token_metadata::types::DataV2;
-
 use mpl_token_metadata::accounts::{MasterEdition, Metadata as MetadataAccount};
-use mpl_token_metadata::instructions::BurnNftCpiBuilder;
 
-declare_id!("7oEFwgSPqj1XWYQJ9yEC8PAgP45Ye8pK8uW5e8NqiAdt");
+declare_id!("8kU8YRPEr9SYYfr37iEb7PDLTARq2yuWr2kL7emyzYAk");
+
+pub const AUTHORITY_SEED: &[u8] = b"authority";
+pub const LISTING_SEED: &[u8] = b"listing";
 
 #[program]
 pub mod nft_marketplace {
-
     use super::*;
 
     pub fn mint_nft(
@@ -25,107 +25,224 @@ pub mod nft_marketplace {
         name: String,
         symbol: String,
         uri: String,
+        bump: u8,
     ) -> Result<()> {
-        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let seeds = &[AUTHORITY_SEED, &[bump]];
+        let signer_seeds = &[&seeds[..]];
 
-        let cpi_accounts = MintTo {
-            mint: ctx.accounts.mint.to_account_info(),
-            to: ctx.accounts.associated_token_account.to_account_info(),
-            authority: ctx.accounts.signer.to_account_info(),
-        };
+        // Mint the NFT
+        mint_to(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                MintTo {
+                    mint: ctx.accounts.mint.to_account_info(),
+                    to: ctx.accounts.associated_token_account.to_account_info(),
+                    authority: ctx.accounts.pda.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            1,
+        )?;
 
-        let cpi_context = CpiContext::new(cpi_program, cpi_accounts);
-
-        mint_to(cpi_context, 1)?;
-
-        let cpi_context = CpiContext::new(
-            ctx.accounts.token_metadata_program.to_account_info(),
-            CreateMetadataAccountsV3 {
-                metadata: ctx.accounts.metadata_account.to_account_info(),
-                mint: ctx.accounts.mint.to_account_info(),
-                mint_authority: ctx.accounts.signer.to_account_info(),
-                update_authority: ctx.accounts.signer.to_account_info(),
-                payer: ctx.accounts.signer.to_account_info(),
-                system_program: ctx.accounts.system_program.to_account_info(),
-                rent: ctx.accounts.rent.to_account_info(),
-            },
-        );
-
-        let data_v2 = DataV2 {
-            name: name,
-            symbol: symbol,
-            uri: uri,
+        // Create metadata
+        let data = DataV2 {
+            name,
+            symbol,
+            uri,
             seller_fee_basis_points: 0,
             creators: None,
             collection: None,
             uses: None,
         };
 
-        create_metadata_accounts_v3(cpi_context, data_v2, false, true, None)?;
+        create_metadata_accounts_v3(
+            CpiContext::new(
+                ctx.accounts.token_metadata_program.to_account_info(),
+                CreateMetadataAccountsV3 {
+                    metadata: ctx.accounts.metadata_account.to_account_info(),
+                    mint: ctx.accounts.mint.to_account_info(),
+                    mint_authority: ctx.accounts.pda.to_account_info(),
+                    update_authority: ctx.accounts.pda.to_account_info(),
+                    payer: ctx.accounts.signer.to_account_info(),
+                    system_program: ctx.accounts.system_program.to_account_info(),
+                    rent: ctx.accounts.rent.to_account_info(),
+                },
+            )
+            .with_signer(signer_seeds),
+            data,
+            false,
+            true,
+            None,
+        )?;
 
-        let cpi_context = CpiContext::new(
-            ctx.accounts.token_metadata_program.to_account_info(),
-            CreateMasterEditionV3 {
-                edition: ctx.accounts.master_edition_account.to_account_info(),
-                mint: ctx.accounts.mint.to_account_info(),
-                update_authority: ctx.accounts.signer.to_account_info(),
-                mint_authority: ctx.accounts.signer.to_account_info(),
-                payer: ctx.accounts.signer.to_account_info(),
-                metadata: ctx.accounts.metadata_account.to_account_info(),
-                token_program: ctx.accounts.token_program.to_account_info(),
-                system_program: ctx.accounts.system_program.to_account_info(),
-                rent: ctx.accounts.rent.to_account_info(),
-            },
-        );
-
-        create_master_edition_v3(cpi_context, None)?;
+        // Create master edition
+        create_master_edition_v3(
+            CpiContext::new(
+                ctx.accounts.token_metadata_program.to_account_info(),
+                CreateMasterEditionV3 {
+                    edition: ctx.accounts.master_edition_account.to_account_info(),
+                    mint: ctx.accounts.mint.to_account_info(),
+                    update_authority: ctx.accounts.pda.to_account_info(),
+                    mint_authority: ctx.accounts.pda.to_account_info(),
+                    payer: ctx.accounts.signer.to_account_info(),
+                    metadata: ctx.accounts.metadata_account.to_account_info(),
+                    token_program: ctx.accounts.token_program.to_account_info(),
+                    system_program: ctx.accounts.system_program.to_account_info(),
+                    rent: ctx.accounts.rent.to_account_info(),
+                },
+            )
+            .with_signer(signer_seeds),
+            None,
+        )?;
 
         Ok(())
     }
 
-    pub fn burn_nft(ctx: Context<BurnNFT>, _nft_mint: Pubkey) -> Result<()> {
-        let owner = ctx.accounts.owner.to_account_info();
-        let metadata = ctx.accounts.metadata.to_account_info();
-        let collection_metadata = ctx
-            .accounts
-            .collection_metadata
-            .as_ref()
-            .map(|a| a.to_account_info());
-        let mint = ctx.accounts.mint.to_account_info();
-        let token = ctx.accounts.token.to_account_info();
-        let edition = ctx.accounts.edition.to_account_info();
-        let spl_token = ctx.accounts.spl_token.to_account_info();
-        let metadata_program_id = ctx.accounts.metadata_program_id.to_account_info();
+    pub fn list_nft(ctx: Context<ListNFT>, price: u64, bump: u8) -> Result<()> {
+        // Transfer NFT from seller to marketplace escrow
+        transfer_checked(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                TransferChecked {
+                    from: ctx.accounts.seller_token_account.to_account_info(),
+                    to: ctx.accounts.escrow_token_account.to_account_info(),
+                    mint: ctx.accounts.mint.to_account_info(),
+                    authority: ctx.accounts.seller.to_account_info(),
+                },
+            ),
+            1,
+            0,
+        )?;
 
-        BurnNftCpiBuilder::new(&metadata_program_id)
-            .metadata(&metadata)
-            // if your NFT is part of a collection you will also need to pass in the collection metadata address.
-            .collection_metadata(collection_metadata.as_ref())
-            .owner(&owner)
-            .mint(&mint)
-            .token_account(&token)
-            .master_edition_account(&edition)
-            .spl_token_program(&spl_token)
-            .invoke()?;
+        // Initialize listing account
+        let listing = &mut ctx.accounts.listing;
+        listing.seller = ctx.accounts.seller.key();
+        listing.mint = ctx.accounts.mint.key();
+        listing.price = price;
+        listing.is_active = true;
+        listing.bump = bump;
+
+        Ok(())
+    }
+
+    // NEW: Update price instruction
+    pub fn update_price(ctx: Context<UpdatePrice>, new_price: u64) -> Result<()> {
+        let listing = &mut ctx.accounts.listing;
+        
+        // Verify listing is active
+        require!(listing.is_active, ErrorCode::ListingNotActive);
+        
+        // Only seller can update price
+        require!(listing.seller == ctx.accounts.seller.key(), ErrorCode::UnauthorizedSeller);
+        
+        // Validate price is greater than 0
+        require!(new_price > 0, ErrorCode::InvalidPrice);
+        
+        // Update the price
+        listing.price = new_price;
+        
+        msg!("Price updated from {} to {} lamports", listing.price, new_price);
+        
+        Ok(())
+    }
+
+    pub fn buy_nft(ctx: Context<BuyNFT>, bump: u8) -> Result<()> {
+        let listing = &ctx.accounts.listing;
+        
+        // Verify listing is active
+        require!(listing.is_active, ErrorCode::ListingNotActive);
+        
+        // Transfer SOL from buyer to seller
+        invoke(
+            &system_instruction::transfer(
+                ctx.accounts.buyer.key,
+                &listing.seller,
+                listing.price,
+            ),
+            &[
+                ctx.accounts.buyer.to_account_info(),
+                ctx.accounts.seller.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+            ],
+        )?;
+
+        // Transfer NFT from escrow to buyer
+        let seeds = &[AUTHORITY_SEED, &[bump]];
+        let signer_seeds = &[&seeds[..]];
+        
+        transfer_checked(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                TransferChecked {
+                    from: ctx.accounts.escrow_token_account.to_account_info(),
+                    to: ctx.accounts.buyer_token_account.to_account_info(),
+                    mint: ctx.accounts.mint.to_account_info(),
+                    authority: ctx.accounts.pda.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            1,
+            0,
+        )?;
+
+        Ok(())
+    }
+
+    pub fn delist_nft(ctx: Context<DelistNFT>, bump: u8) -> Result<()> {
+        let listing = &mut ctx.accounts.listing;
+        
+        // Verify listing is active
+        require!(listing.is_active, ErrorCode::ListingNotActive);
+        
+        // Only seller can delist
+        require!(listing.seller == ctx.accounts.seller.key(), ErrorCode::UnauthorizedSeller);
+
+        // Transfer NFT back to seller
+        let seeds = &[AUTHORITY_SEED, &[bump]];
+        let signer_seeds = &[&seeds[..]];
+        
+        transfer_checked(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                TransferChecked {
+                    from: ctx.accounts.escrow_token_account.to_account_info(),
+                    to: ctx.accounts.seller_token_account.to_account_info(),
+                    mint: ctx.accounts.mint.to_account_info(),
+                    authority: ctx.accounts.pda.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            1,
+            0,
+        )?;
+
+        // Mark listing as inactive
+        listing.is_active = false;
 
         Ok(())
     }
 }
 
 #[derive(Accounts)]
+#[instruction(bump: u8)]
 pub struct MintNFT<'info> {
-    /// CHECK: signer is a trusted signer, verified by constraint `signer`
     #[account(mut, signer)]
-    pub signer: AccountInfo<'info>,
+    pub signer: Signer<'info>,
 
     #[account(
         init,
         payer = signer,
         mint::decimals = 0,
-        mint::authority = signer.key(),
-        mint::freeze_authority = signer.key(),
+        mint::authority = pda.key(),
+        mint::freeze_authority = pda.key(),
     )]
     pub mint: Account<'info, Mint>,
+
+    #[account(
+        seeds = [AUTHORITY_SEED],
+        bump,
+    )]
+    pub pda: SystemAccount<'info>,
 
     #[account(
         init_if_needed,
@@ -135,18 +252,12 @@ pub struct MintNFT<'info> {
     )]
     pub associated_token_account: Account<'info, TokenAccount>,
 
-    /// CHECK: PDA for metadata account verified via `address = ...`
-    #[account(
-        mut,
-        address = MetadataAccount::find_pda(&mint.key()).0,
-    )]
+    /// CHECK: Metaplex Metadata PDA
+    #[account(mut)]
     pub metadata_account: AccountInfo<'info>,
 
-    /// CHECK: PDA for master edition verified via `address = ...`
-    #[account(
-        mut,
-        address = MasterEdition::find_pda(&mint.key()).0,
-    )]
+    /// CHECK: Metaplex Master Edition PDA
+    #[account(mut)]
     pub master_edition_account: AccountInfo<'info>,
 
     pub token_program: Program<'info, Token>,
@@ -155,31 +266,176 @@ pub struct MintNFT<'info> {
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 }
+
 #[derive(Accounts)]
-pub struct BurnNFT<'info> {
+#[instruction(price: u64, bump: u8)]
+pub struct ListNFT<'info> {
     #[account(mut)]
-    pub owner: Signer<'info>,
+    pub seller: Signer<'info>,
+
     #[account(mut)]
     pub mint: Account<'info, Mint>,
 
-    /// CHECK: Verified via PDA and CPI constraints in burn logic
+    #[account(
+        seeds = [AUTHORITY_SEED],
+        bump,
+    )]
+    pub pda: SystemAccount<'info>,
+
+    #[account(
+        mut,
+        constraint = seller_token_account.amount == 1 &&
+                     seller_token_account.owner == seller.key() &&
+                     seller_token_account.mint == mint.key()
+    )]
+    pub seller_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        init_if_needed,
+        payer = seller,
+        associated_token::mint = mint,
+        associated_token::authority = pda
+    )]
+    pub escrow_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        init,
+        payer = seller,
+        space = 8 + 32 + 32 + 8 + 1 + 1, // discriminator + seller + mint + price + is_active + bump
+        seeds = [LISTING_SEED, mint.key().as_ref()],
+        bump
+    )]
+    pub listing: Account<'info, Listing>,
+
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+// NEW: Update price context
+#[derive(Accounts)]
+pub struct UpdatePrice<'info> {
     #[account(mut)]
-    pub metadata: AccountInfo<'info>,
+    pub seller: Signer<'info>,
 
-    /// CHECK: Token account is checked in program logic
     #[account(mut)]
-    pub token: AccountInfo<'info>,
+    pub mint: Account<'info, Mint>,
 
-    /// CHECK: Master edition is verified by PDA address
+    #[account(
+        mut,
+        seeds = [LISTING_SEED, mint.key().as_ref()],
+        bump = listing.bump,
+        constraint = listing.seller == seller.key() @ ErrorCode::UnauthorizedSeller
+    )]
+    pub listing: Account<'info, Listing>,
+}
+
+#[derive(Accounts)]
+#[instruction(bump: u8)]
+pub struct BuyNFT<'info> {
     #[account(mut)]
-    pub edition: AccountInfo<'info>,
+    pub buyer: Signer<'info>,
 
-    /// CHECK: Optional, verified by collection or PDA constraint if provided
-    pub collection_metadata: Option<AccountInfo<'info>>,
+    /// CHECK: seller receives SOL
+    #[account(mut)]
+    pub seller: AccountInfo<'info>,
 
-    /// CHECK: Standard SPL Token program
-    pub spl_token: AccountInfo<'info>,
+    #[account(mut)]
+    pub mint: Account<'info, Mint>,
 
-    /// CHECK: Verified by CPI call to token metadata program
-    pub metadata_program_id: AccountInfo<'info>,
+    #[account(
+        seeds = [AUTHORITY_SEED],
+        bump,
+    )]
+    pub pda: SystemAccount<'info>,
+
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = pda
+    )]
+    pub escrow_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        init_if_needed,
+        payer = buyer,
+        associated_token::mint = mint,
+        associated_token::authority = buyer
+    )]
+    pub buyer_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        seeds = [LISTING_SEED, mint.key().as_ref()],
+        bump = listing.bump,
+        close = seller
+    )]
+    pub listing: Account<'info, Listing>,
+
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+#[instruction(bump: u8)]
+pub struct DelistNFT<'info> {
+    #[account(mut)]
+    pub seller: Signer<'info>,
+
+    #[account(mut)]
+    pub mint: Account<'info, Mint>,
+
+    #[account(
+        seeds = [AUTHORITY_SEED],
+        bump,
+    )]
+    pub pda: SystemAccount<'info>,
+
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = pda
+    )]
+    pub escrow_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = seller
+    )]
+    pub seller_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        seeds = [LISTING_SEED, mint.key().as_ref()],
+        bump = listing.bump,
+        close = seller
+    )]
+    pub listing: Account<'info, Listing>,
+
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+}
+
+#[account]
+pub struct Listing {
+    pub seller: Pubkey,
+    pub mint: Pubkey,
+    pub price: u64,
+    pub is_active: bool,
+    pub bump: u8,
+}
+
+#[error_code]
+pub enum ErrorCode {
+    #[msg("Listing is not active")]
+    ListingNotActive,
+    #[msg("Unauthorized seller")]
+    UnauthorizedSeller,
+    #[msg("Invalid price - must be greater than 0")]
+    InvalidPrice,
 }

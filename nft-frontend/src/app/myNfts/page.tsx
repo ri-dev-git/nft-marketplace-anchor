@@ -7,7 +7,7 @@ import { fetchAllDigitalAssetByOwner, TokenStandard } from "@metaplex-foundation
 import { publicKey, Umi } from "@metaplex-foundation/umi";
 import { NFTCard } from "@/src/components/NFTCard";
 import { DigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
-import { useAppKitConnection, type Provider } from '@reown/appkit-adapter-solana/react';
+import { useAppKitConnection, WalletAdapter, type Provider } from '@reown/appkit-adapter-solana/react';
 import { burnV1, transferV1 } from '@metaplex-foundation/mpl-token-metadata';
 import { findMetadataPda } from '@metaplex-foundation/mpl-token-metadata';
 import { walletAdapterIdentity } from '@metaplex-foundation/umi-signer-wallet-adapters';
