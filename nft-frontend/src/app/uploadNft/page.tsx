@@ -32,6 +32,23 @@ const LISTING_SEED = "listing";
 // Maximum file size (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+interface NFTData {
+    mint_address: string;
+    name: string;
+    symbol: string;
+    price: number;
+    image_uri: string;
+    metadata_uri: string;
+    owner: string;
+}
+
+interface UploadResult {
+    success: boolean;
+    metadataUri: string;
+    imageUri: string;
+    error?: string;
+}
+
 // NFT creation steps
 const STEPS = [
     { id: 1, title: "Upload & Validate", description: "Upload your image and fill out NFT details" },
@@ -67,9 +84,8 @@ export default function UploadNFTPage() {
 
     useEffect(() => {
         setIsClient(true);
-    }, []);
+    }, [address]);
 
-    // File validation and preview
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target?.files?.[0];
         if (!selectedFile) {
@@ -162,15 +178,15 @@ export default function UploadNFTPage() {
                 TOKEN_METADATA_PROGRAM_ID
             );
 
-            const [masterEditionPda] = PublicKey.findProgramAddressSync(
-                [
-                    Buffer.from("metadata"),
-                    TOKEN_METADATA_PROGRAM_ID.toBuffer(),
-                    mintKeypair.publicKey.toBuffer(),
-                    Buffer.from("edition"),
-                ],
-                TOKEN_METADATA_PROGRAM_ID
-            );
+        const [masterEditionPda] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("metadata"),
+                TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+                mintKeypair.publicKey.toBuffer(),
+                Buffer.from("edition"),
+            ],
+            TOKEN_METADATA_PROGRAM_ID
+        );
 
             const [pda, bump] = PublicKey.findProgramAddressSync(
                 [Buffer.from(AUTHORITY_SEED)],
@@ -343,6 +359,7 @@ export default function UploadNFTPage() {
             setCurrentStep(4);
 
         } catch (error: any) {
+            console.error("Minting process failed:", error);
             handleError(error);
         } finally {
             setProcessing(false);
@@ -355,27 +372,29 @@ export default function UploadNFTPage() {
         if (error instanceof SendTransactionError) {
             const errorMessage = error.message;
             if (errorMessage.includes("insufficient funds")) {
-                setStatus("Error: Insufficient funds for transaction. Please add more SOL to your wallet.");
+                setStatus("❌ Error: Insufficient SOL for transaction fees. Please add more SOL to your wallet.");
             } else if (errorMessage.includes("blockhash")) {
-                setStatus("Error: Transaction blockhash expired. Please try again.");
+                setStatus("❌ Error: Transaction expired. Please try again.");
+            } else if (errorMessage.includes("timeout") || errorMessage.includes("confirmed")) {
+                setStatus("❌ Transaction confirmation timeout. Check Solana Explorer for transaction status.");
             } else {
-                setStatus(`Transaction failed: ${errorMessage}`);
+                setStatus(`❌ Transaction failed: ${errorMessage}`);
             }
         } else if (error instanceof anchor.AnchorError) {
             setStatus(`Program error: ${error.error.errorMessage || error.message}`);
         } else if (error instanceof Error) {
-            setStatus(`Error: ${error.message}`);
+            setStatus(`❌ Error: ${error.message}`);
         } else {
-            setStatus("Unknown error occurred. Please try again.");
+            setStatus("❌ Unknown error occurred. Please try again or check Solana Explorer.");
         }
     };
 
-    // Reset form
     const resetForm = () => {
         setCurrentStep(1);
         setName("");
         setSymbol("");
         setDescription("");
+        setPrice(0.5);
         setPrice(0.5);
         setFile(null);
         setFilePreview(null);
@@ -655,8 +674,9 @@ export default function UploadNFTPage() {
                                 </button>
                                 <button
                                     onClick={resetForm}
-                                    className="px-6 py-3 rounded text-white font-bold bg-green-600 hover:bg-green-700"
+                                    className="px-8 py-3 rounded-lg text-white font-bold bg-green-600 hover:bg-green-700 transition-colors shadow-lg"
                                 >
+                                    Create Another NFT
                                     Create Another NFT
                                 </button>
                             </div>

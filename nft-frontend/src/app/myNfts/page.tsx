@@ -62,6 +62,8 @@ export default function MarketplacePage() {
         } catch (error) {
             console.error("Failed to fetch NFTs:", error);
             setMyNFTs([]);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -190,7 +192,7 @@ export default function MarketplacePage() {
 
     useEffect(() => {
         if (walletProvider) {
-            const updatedUmi = umiInstance.use(walletAdapterIdentity(walletProvider as any));
+            const updatedUmi = umiInstance.use(walletAdapterIdentity(walletProvider as unknown as WalletAdapter));
             setUmiInstance(updatedUmi);
         }
 
@@ -353,6 +355,7 @@ export default function MarketplacePage() {
                 message: 'NFT burned successfully!'
             });
 
+            setLoading(false);
         } catch (error) {
             console.error("Burn failed:", error);
             setTransactionStatus({

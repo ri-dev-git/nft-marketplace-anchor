@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ConnectButton } from "./ConnectButton";
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -137,6 +138,35 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 />
             )}
 
+            {/* Mobile Horizontal Navigation (below navbar on mobile screens only) */}
+            {screenSize === 'mobile' && (
+                <nav className="w-full bg-base-200 border-b border-base-300 px-4 py-2">
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                        {navigationItems.map((item) => (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${pathname === item.href
+                                        ? 'bg-primary text-primary-content'
+                                        : 'hover:bg-base-300'
+                                    }`}
+                            >
+                                <span className="mr-2">{item.icon}</span>
+                                {item.label}
+                            </Link>
+                        ))}
+                    </div>
+                </nav>
+            )}
+
+            {/* Tablet Menu Overlay */}
+            {isTabletMenuOpen && screenSize === 'tablet' && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                    onClick={toggleTabletMenu}
+                />
+            )}
+
             {/* Body with Sidebar and Main Content */}
             <div className="flex flex-1 overflow-hidden relative">
                 {/* Desktop Sidebar (visible only on desktop) */}
@@ -212,6 +242,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     {children}
                 </main>
             </div>
+
+            {/* Custom scrollbar hiding styles */}
+            <style jsx global>{`
+                .scrollbar-hide {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                }
+                .scrollbar-hide::-webkit-scrollbar {
+                    display: none;
+                }
+            `}</style>
 
             {/* Custom scrollbar hiding styles */}
             <style jsx global>{`

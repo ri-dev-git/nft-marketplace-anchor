@@ -39,10 +39,10 @@ interface ListedNFT {
 }
 
 const SkeletonCard: React.FC = () => (
-  <div className="animate-pulse border rounded-lg p-4 shadow">
-    <div className="bg-gray-300 h-48 w-full rounded mb-4" />
-    <div className="h-4 bg-gray-300 rounded w-3/4 mb-2" />
-    <div className="h-4 bg-gray-200 rounded w-1/2" />
+  <div className="animate-pulse border rounded-lg p-3 sm:p-4 shadow">
+    <div className="bg-gray-300 h-40 sm:h-48 w-full rounded mb-3 sm:mb-4" />
+    <div className="h-3 sm:h-4 bg-gray-300 rounded w-3/4 mb-2" />
+    <div className="h-3 sm:h-4 bg-gray-200 rounded w-1/2" />
   </div>
 );
 const PROGRAM_ID = new PublicKey(process.env.program_id || "8kU8YRPEr9SYYfr37iEb7PDLTARq2yuWr2kL7emyzYAk");
@@ -56,10 +56,13 @@ const { walletProvider } = useAppKitProvider<Provider>("solana");
   const [listedNFTs, setListedNFTs] = useState<ListedNFT[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingFromServer, setLoadingFromServer] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [touchDevice, setTouchDevice] = useState(false);
 
 
   // Initialize Umi with your preferred RPC endpoint
   const umi = createUmi('https://api.devnet.solana.com');
+
 
 
 
@@ -76,7 +79,17 @@ const { walletProvider } = useAppKitProvider<Provider>("solana");
     }
   }
 
+
   useEffect(() => {
+    // const checkDevice = () => {
+    //   setIsMobile(window.innerWidth < 768);
+    //   setTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    // };
+
+    // checkDevice();
+    // // window.addEventListener('resize', checkDevice);
+
+    // return () => window.removeEventListener('resize', checkDevice);
     async function fetchNFTs() {
       setIsLoading(true);
       setLoadingFromServer(true);
@@ -103,6 +116,11 @@ async function handleBuy(nft: ListedNFT) {
         alert("Please connect your wallet.");
         return;
     }
+
+    // Show loading state for better UX
+    const originalButtonText = document.querySelector(`[data-nft="${nft.mint_address}"] .buy-button-text`)?.textContent;
+    const buyButton = document.querySelector(`[data-nft="${nft.mint_address}"] .buy-button-text`);
+    if (buyButton) buyButton.textContent = "Processing...";
 
     try {
         const connection = new Connection("https://api.devnet.solana.com");
@@ -201,18 +219,20 @@ async function handleBuy(nft: ListedNFT) {
   if (!isClient) return null;
 
   const Loader = () => (
-    <div className="flex justify-center items-center h-64">
-      <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+    <div className="flex justify-center items-center h-32 sm:h-64">
+      <div className="animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-t-2 border-b-2 border-blue-500"></div>
     </div>
   );
 
   return (
     <Layout>
       {isConnected ? (
-        <div className="flex flex-col h-full w-full p-4">
-          <h1 className="text-2xl font-bold mb-6">Available NFTs</h1>
+        <div className="flex flex-col h-full w-full p-2 sm:p-4">
+          <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center sm:text-left">
+            Available NFTs
+          </h1>
           {loadingFromServer ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
               {[...Array(6)].map((_, i) => (
                 <SkeletonCard key={i} />
               ))}
@@ -237,16 +257,22 @@ async function handleBuy(nft: ListedNFT) {
           )}
         </div>
       ) : (
-        <div className="flex flex-col size-full content-center justify-center p-10">
-          <h1 className="text-center text-2xl font-bold mb-4">Connect Your Wallet</h1>
-          <p className="mb-4 text-center text-gray-600">
-            Please connect your wallet to access the NFT marketplace.
-          </p>
-          <ConnectButton />
+        <div className="flex flex-col h-full w-full items-center justify-center p-4 sm:p-10 text-center">
+          <div className="max-w-md mx-auto">
+            <div className="text-4xl sm:text-6xl mb-4 sm:mb-6">🔗</div>
+            <h1 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">
+              Connect Your Wallet
+            </h1>
+            <p className="mb-6 sm:mb-8 text-gray-600 text-sm sm:text-base leading-relaxed">
+              Please connect your wallet to access the NFT marketplace and start browsing available collections.
+            </p>
+            <div className="w-full max-w-xs mx-auto">
+              <ConnectButton />
+            </div>
+          </div>
         </div>
-      )
-      }
-    </Layout >
+      )}
+    </Layout>
   );
 }
 
