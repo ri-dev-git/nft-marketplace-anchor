@@ -1,13 +1,29 @@
 "use client";
-
+import { AnchorProvider, Program, web3, BN } from "@coral-xyz/anchor";
 import Layout from '../components/Layout';
 import { ConnectButton } from "../components/ConnectButton";
 import { useEffect, useState } from 'react';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
-import { DigitalAsset, fetchAllDigitalAssetByUpdateAuthority } from '@metaplex-foundation/mpl-token-metadata';
+import { DigitalAsset, transferV1, TokenStandard ,fetchAllDigitalAssetByUpdateAuthority, mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey } from '@metaplex-foundation/umi';
 import { useAppKitAccount, useAppKitProvider, useWalletInfo } from '@reown/appkit/react';
 import { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, Connection } from '@solana/web3.js';
+import { ListedNFTCard } from "@/src/components/ListedNFTCard";
+import type { Provider } from "@reown/appkit-adapter-solana/react";
+import { walletAdapterIdentity } from '@metaplex-foundation/umi-signer-wallet-adapters';
+import {
+    Keypair,
+   
+    SendTransactionError,
+   
+    SYSVAR_RENT_PUBKEY,
+} from "@solana/web3.js";
+import idl from "../idl/nft_marketplace.json";
+import {
+    TOKEN_PROGRAM_ID,
+    getAssociatedTokenAddress,
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 
 // Define a type for your MongoDB-listed NFT
 interface ListedNFT {
@@ -19,6 +35,7 @@ interface ListedNFT {
   metadata_uri: string;
   is_listed: boolean;
   owner: string;
+  token_standard: string;
 }
 
 const SkeletonCard: React.FC = () => (
@@ -28,9 +45,11 @@ const SkeletonCard: React.FC = () => (
     <div className="h-4 bg-gray-200 rounded w-1/2" />
   </div>
 );
+const PROGRAM_ID = new PublicKey(process.env.program_id || "8kU8YRPEr9SYYfr37iEb7PDLTARq2yuWr2kL7emyzYAk");
 
 export default function Home() {
-  const { walletProvider } = useAppKitProvider("solana");
+const { walletProvider } = useAppKitProvider<Provider>("solana");
+    
   const [isClient, setIsClient] = useState(false);
   const { isConnected, address } = useAppKitAccount();
   const [nfts, setNfts] = useState<DigitalAsset[]>([]);
@@ -38,8 +57,6 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadingFromServer, setLoadingFromServer] = useState(true);
 
-  // Update authority (your program ID)
-  const updateAuthority = publicKey('7oEFwgSPqj1XWYQJ9yEC8PAgP45Ye8pK8uW5e8NqiAdt');
 
   // Initialize Umi with your preferred RPC endpoint
   const umi = createUmi('https://api.devnet.solana.com');
@@ -48,7 +65,7 @@ export default function Home() {
 
   async function getNFTsFromMarketplaceAPI() {
     try {
-      const res = await fetch('http://127.0.0.1:8080/get_listed_nfts');
+      const res = await fetch('http://127.0.0.1:8000/get_listed_nfts');
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
       console.log("MongoDB Listed NFTs:", data);
@@ -68,6 +85,7 @@ export default function Home() {
         // Fetch MongoDB-listed NFTs
         const serverNFTs = await getNFTsFromMarketplaceAPI();
         setListedNFTs(serverNFTs);
+        console.log(serverNFTs)
       } catch (error) {
         console.error('Error in fetchNFTs:', error);
       } finally {
@@ -80,63 +98,105 @@ export default function Home() {
     setIsClient(true);
   }, []);
 
-  async function handleBuy(nft: ListedNFT) {
+async function handleBuy(nft: ListedNFT) {
     if (!isConnected || !walletProvider || !address) {
-      alert("Please connect your wallet.");
-      return;
+        alert("Please connect your wallet.");
+        return;
     }
-
-    const buyerPublicKey = new PublicKey(address);
-    const sellerPublicKey = new PublicKey(nft.owner); // Make sure `owner` field exists in NFT
-    const priceInSol = nft.price;
 
     try {
-      // Create transaction
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: buyerPublicKey,
-          toPubkey: sellerPublicKey,
-          lamports: priceInSol * LAMPORTS_PER_SOL,
-        })
-      );
+        const connection = new Connection("https://api.devnet.solana.com");
+        const buyer = new PublicKey(address);
+        const seller = new PublicKey(nft.owner);
+        const mint = new PublicKey(nft.mint_address);
+        const priceLamports = nft.price * web3.LAMPORTS_PER_SOL;
 
-      // Get blockhash
-      const connection = new Connection('https://api.devnet.solana.com ');
-      const { blockhash } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
-      transaction.feePayer = buyerPublicKey;
+        // Get PDA for escrow authority
+        const [pda, bump] = PublicKey.findProgramAddressSync(
+            [Buffer.from("authority")],
+            PROGRAM_ID
+        );
 
-      // Sign the transaction using the wallet provider
-      // @ts-ignore
-      const signedTx = await walletProvider.signTransaction(transaction);
-      const signature = await connection.sendRawTransaction(signedTx.serialize());
+        // Derive token accounts
+        const buyerTokenAccount = await getAssociatedTokenAddress(mint, buyer);
+        const escrowTokenAccount = await getAssociatedTokenAddress(mint, pda, true); // true: PDA ATA
+        const sellerTokenAccount = await getAssociatedTokenAddress(mint, seller);
 
-      // Confirm transaction
-      await connection.confirmTransaction(signature);
+        // Get latest blockhash
+        const latestBlockhash = await connection.getLatestBlockhash();
 
-      // After successful transfer, update backend
-      const res = await fetch('http://127.0.0.1:8080/update_nft_listing_status', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mint_address: nft.mint_address,
-          is_listed: false
-        }),
-      });
+        // Prepare transaction
+        const transaction = new Transaction({
+            feePayer: buyer,
+            recentBlockhash: latestBlockhash.blockhash,
+        });
 
-      if (!res.ok) throw new Error('Failed to update NFT listing status');
+        // Create Anchor provider & program
+        const provider = new AnchorProvider(
+            connection,
+            walletProvider as any,
+            {
+                preflightCommitment: "processed",
+                commitment: "processed",
+                skipPreflight: true,
+                maxRetries: 5,
+            }
+        );
 
-      // Update local state
-      setListedNFTs((prev) =>
-        prev.filter((listedNft) => listedNft.mint_address !== nft.mint_address)
-      );
+        const program = new Program(idl as any, provider);
 
-      alert(`✅ Successfully bought "${nft.name}" for ${priceInSol} SOL`);
+        // Build buy_nft instruction
+        const buyInstruction = await program.methods
+            .buyNft(bump)
+            .accounts({
+                buyer,
+                seller,
+                mint,
+                buyerTokenAccount,
+                escrowTokenAccount,
+                pda,
+                listing: PublicKey.findProgramAddressSync(
+                    [Buffer.from("listing"), mint.toBuffer()],
+                    PROGRAM_ID
+                )[0],
+                tokenProgram: TOKEN_PROGRAM_ID,
+                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+                systemProgram: SystemProgram.programId,
+                rent: SYSVAR_RENT_PUBKEY,
+            })
+            .instruction();
+
+        transaction.add(buyInstruction);
+
+        // Sign and send transaction
+        const txSig = await walletProvider.sendTransaction(transaction, connection);
+        console.log("✅ buy_nft tx confirmed:", txSig);
+
+        // Update backend
+        const res = await fetch("http://127.0.0.1:8000/update_nft_listing_status", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                mint_address: nft.mint_address,
+                is_listed: false,
+                new_owner: address,
+            }),
+        });
+
+        if (!res.ok) throw new Error("Failed to update NFT listing status");
+
+        // Update UI
+        setListedNFTs((prev) =>
+            prev.filter((listedNft) => listedNft.mint_address !== nft.mint_address)
+        );
+
+        alert(`✅ Successfully bought "${nft.name}" for ${nft.price} SOL`);
     } catch (error: any) {
-      console.error('Buy error:', error.message);
-      alert(`❌ Failed to buy NFT: ${error.message}`);
+        console.error("Buy error:", error);
+        alert(`❌ Failed to buy NFT: ${error.message}`);
     }
-  }
+}
+
 
   if (!isClient) return null;
 
@@ -160,35 +220,18 @@ export default function Home() {
           ) : listedNFTs.length > 0 ? (
             <div className="flex-grow overflow-y-auto p-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {listedNFTs.map((nft, index) => (
-                  <div
-                    key={`marketplace-${index}`}
-                    className="relative group border rounded-lg overflow-hidden shadow hover:shadow-lg transition-shadow duration-300"
-                  >
-                    <img
-                      src={nft.image_uri || "/fallback-image.png"}
-                      alt={nft.name}
-                      className="w-full h-64 object-cover"
-                    />
-                    <div className="p-4">
-                      <h2 className="text-lg font-semibold">{nft.name}</h2>
-                      <p className="text-sm text-gray-500">{nft.symbol}</p>
-                      <p className="text-sm mt-1">
-                        <strong>Price:</strong> {nft.price} SOL
-                      </p>
-                    </div>
-                    <button
-                      className="absolute h-60 inset-0 bg-black bg-opacity-100 text-white opacity-0 group-hover:opacity-50 transition-opacity flex items-center justify-center"
-                      onClick={() => handleBuy(nft)}
-                    >
-                      <span className="bg-green-500 px-4 py-2 rounded">Buy Now</span>
-                    </button>
-                  </div>
-                ))}
+                
+              {listedNFTs.map((nft, idx) => (
+                <ListedNFTCard
+                  key={idx}
+                  nft={nft}
+                  onBuy={() => handleBuy(nft)}
+                />
+              ))}
               </div>
             </div>
           ) : (
-            <div className="p-4 text-center border rounded-lg">
+            <div className="p-4 text-center  rounded-lg">
               <p className="text-gray-500">No NFTs are currently listed on the marketplace.</p>
             </div>
           )}
@@ -207,4 +250,8 @@ export default function Home() {
   );
 }
 
+
+function mplToolbox(): import("@metaplex-foundation/umi").UmiPlugin {
+  throw new Error('Function not implemented.');
+}
 
