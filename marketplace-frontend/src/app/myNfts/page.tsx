@@ -158,7 +158,7 @@ export default function MarketplacePage() {
             }
 
             // Update backend with listing information
-            const response = await fetch("http://127.0.0.1:8000/update_nft_listing_status", {
+            const response = await fetch("https://nft-marketplace-anchor.onrender.com/update_nft_listing_status", {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -270,7 +270,7 @@ export default function MarketplacePage() {
             ));
 
             try {
-                await fetch("http://127.0.0.1:8000/update_nft_listing_status", {
+                await fetch("https://nft-marketplace-anchor.onrender.com/update_nft_listing_status", {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -338,7 +338,7 @@ export default function MarketplacePage() {
             console.log("Burning NFT:", nft.mint.publicKey.toString());
 
             try {
-                await fetch(`http://127.0.0.1:8000/delete_nft/${nft.mint.publicKey.toString()}`, {
+                await fetch(`https://nft-marketplace-anchor.onrender.com/delete_nft/${nft.mint.publicKey.toString()}`, {
                     method: "DELETE",
                 });
             } catch (err) {

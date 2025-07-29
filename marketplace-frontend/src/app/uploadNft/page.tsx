@@ -246,7 +246,7 @@ export default function UploadNFTPage() {
                     owner: address,
                 };
 
-                await fetch("http://127.0.0.1:8000/list_nft", {
+                await fetch("https://nft-marketplace-anchor.onrender.com/list_nft", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

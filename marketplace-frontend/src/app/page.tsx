@@ -68,7 +68,7 @@ const { walletProvider } = useAppKitProvider<Provider>("solana");
 
   async function getNFTsFromMarketplaceAPI() {
     try {
-      const res = await fetch('http://127.0.0.1:8000/get_listed_nfts');
+      const res = await fetch('https://nft-marketplace-anchor.onrender.com/get_listed_nfts');
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
       console.log("MongoDB Listed NFTs:", data);
@@ -191,7 +191,7 @@ async function handleBuy(nft: ListedNFT) {
         console.log("✅ buy_nft tx confirmed:", txSig);
 
         // Update backend
-        const res = await fetch("http://127.0.0.1:8000/update_nft_listing_status", {
+        const res = await fetch("https://nft-marketplace-anchor.onrender.com/update_nft_listing_status", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
