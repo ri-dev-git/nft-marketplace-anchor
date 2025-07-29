@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { ConnectButton } from "./ConnectButton";
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { useState, useEffect } from 'react';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();

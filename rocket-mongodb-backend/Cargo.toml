@@ -1,5 +1,5 @@
 [package]
-name = "rocket-mongo-example"
+name = "rocket-mongodb-backend"
 version = "0.1.0"
 edition = "2021"
 
