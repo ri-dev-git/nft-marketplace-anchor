@@ -94,7 +94,6 @@ export default function MarketplacePage() {
 
         console.log("Listing NFT with price:", priceSol, "SOL");
 
-        // 🧠 Only ONE instruction needed if listNft sets the price
         const tx = await program.methods
             .listNft(new BN(priceSol * web3.LAMPORTS_PER_SOL), bump)
             .accounts({
@@ -109,7 +108,7 @@ export default function MarketplacePage() {
                 systemProgram: SystemProgram.programId,
                 rent: SYSVAR_RENT_PUBKEY,
             })
-            .rpc();
+            .instruction();
 
         console.log("✅ NFT listed on-chain:", tx);
 

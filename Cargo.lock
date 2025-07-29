@@ -2931,7 +2931,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rocket-mongo-example"
+name = "rocket-mongodb-backend"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
