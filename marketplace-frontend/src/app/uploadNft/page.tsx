@@ -24,7 +24,7 @@ import {
 import { useAppKitConnection } from "@reown/appkit-adapter-solana/react";
 import type { Provider } from "@reown/appkit-adapter-solana/react";
 
-const PROGRAM_ID = new PublicKey(`${process.env.program_id}`);
+const PROGRAM_ID = new PublicKey(`${process.env.NEXT_PUBLIC_PROGRAM_ID}`);
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 const AUTHORITY_SEED = "authority";
 const LISTING_SEED = "listing";

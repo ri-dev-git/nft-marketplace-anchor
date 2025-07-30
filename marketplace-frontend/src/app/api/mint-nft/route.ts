@@ -41,7 +41,7 @@ const uploadFileToPinata = async (file: File): Promise<string> => {
     const fileName = `${uuidv4()}-${Date.now()}`;
     const fileObject = new File([buffer], fileName);
     const upload = await pinata.upload.public.file(fileObject);
-    return `https://${process.env.NEXT_PUBLIC_GATEWAY_URL}/ipfs/${upload.cid}`;
+    return `https://white-swift-boar-963.mypinata.cloud/ipfs/${upload.cid}`;
 };
 
 
