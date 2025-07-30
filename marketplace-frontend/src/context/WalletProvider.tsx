@@ -1,6 +1,6 @@
 'use client'
 import { solana, solanaTestnet, solanaDevnet } from '@reown/appkit/networks'
-import { solanaWeb3JsAdapter, projectId, networks } from '../config'
+import { solanaWeb3JsAdapter, networks } from '../config'
 import { createAppKit } from '@reown/appkit/react'
 import React, { type ReactNode } from 'react'
 
@@ -15,7 +15,7 @@ const metadata = {
 // Create the modal
 export const modal = createAppKit({
     adapters: [solanaWeb3JsAdapter],
-    projectId,
+    projectId:process.env.NEXT_PUBLIC_PROJECT_ID || '', // Ensure this is set in your environment variables
     networks: networks,
     metadata: {
         name: 'NFT Marketplace',
