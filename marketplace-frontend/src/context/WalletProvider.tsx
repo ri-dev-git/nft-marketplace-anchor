@@ -15,7 +15,7 @@ const metadata = {
 // Create the modal
 export const modal = createAppKit({
     adapters: [solanaWeb3JsAdapter],
-    projectId:process.env.NEXT_PUBLIC_PROJECT_ID || '', // Ensure this is set in your environment variables
+    projectId:`${process.env.NEXT_PUBLIC_PROJECT_ID}`, // Ensure this is set in your environment variables
     networks: networks,
     metadata: {
         name: 'NFT Marketplace',
