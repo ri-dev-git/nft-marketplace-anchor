@@ -18,7 +18,6 @@ import idl from "../../idl/nft_marketplace.json";
 import { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, ASSOCIATED_TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
-const PROGRAM_ID = new PublicKey("8kU8YRPEr9SYYfr37iEb7PDLTARq2yuWr2kL7emyzYAk");
 
 const SkeletonCard = () => (
     <div className="animate-pulse border rounded-lg p-4 shadow">

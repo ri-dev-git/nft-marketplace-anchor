@@ -45,7 +45,7 @@ const SkeletonCard: React.FC = () => (
     <div className="h-3 sm:h-4 bg-gray-200 rounded w-1/2" />
   </div>
 );
-const PROGRAM_ID = new PublicKey(process.env.program_id || "8kU8YRPEr9SYYfr37iEb7PDLTARq2yuWr2kL7emyzYAk");
+const PROGRAM_ID = new PublicKey(process.env.program_id || "");
 
 export default function Home() {
 const { walletProvider } = useAppKitProvider<Provider>("solana");
